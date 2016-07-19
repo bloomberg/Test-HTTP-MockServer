@@ -201,13 +201,13 @@ Test::HTTP::MockServer - Implement a mock HTTP server for use in tests
 
 =head1 DESCRIPTION
 
-Sometimes, when writing a test, you don't have to oportunity to do
+Sometimes, when writing a test, you don't have to opportunity to do
 dependency injection of the type of transport used in a specific
-API. Sometimes that code willl unequivocally always use actual HTTP
+API. Sometimes that code will unequivocally always use actual HTTP
 and the only control you have is over the host and port to which it
 will connect.
 
-This class offer a simple way to mock the service being called. It
+This class offers a simple way to mock the service being called. It
 does that by binding to a random port on localhost and allowing you to
 inspect which port that was. Using a random port means that this can
 be used by tests running in parallel on the same host.
@@ -217,7 +217,7 @@ that the lifetime of the connection is defined by the lifetime of the
 test itself.
 
 Since the socket will be already bound and listened to, the two
-conntrol methods (start_mock_server and stop_mock_server) fork only
+control methods (start_mock_server and stop_mock_server) fork only
 for the accept call, which means that it is safe to call start and
 stop several times during the test in order to change the expectations
 of the mocked code.
@@ -227,7 +227,7 @@ server across each step of your test case. On the other hand, it also
 means that no state is shared between the code running in the mock
 server and the test code.
 
-=head1 METHOS
+=head1 METHODS
 
 =over
 
@@ -237,8 +237,8 @@ Creates a new MockServer object.
 
 =item bind_mock_server()
 
-Finds a random available port, bind and listen to it. This allows to
-inspect what the mock url of the portal will be before the server
+Finds a random available port, bind and listen to it. This allows you
+to inspect what the mock url of the portal will be before the server
 forks to start. If the random port is already in use, it will keep
 trying until it finds one that works.
 
@@ -256,12 +256,12 @@ to. It will call bind_mock_server if that was not yet initialized.
 =item base_url()
 
 Returns the url to be used as the base url for requests into the mock
-server. It will bind_mock_server if that was not yet initialized.
+server. It will call bind_mock_server if that was not yet initialized.
 
 =item start_mock_server($request_processor)
 
-This will bind_mock_server if that was not yet initialized, then fork
-to accept connections.
+This will call bind_mock_server if that was not yet initialized, then
+fork to accept connections.
 
 In order to make it easier to have state propagate across different
 requests in the mock implementation, there will only be one connection
