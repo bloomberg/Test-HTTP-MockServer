@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Test::HTTP::MockServer - Testing things that don't want to be tested</title>
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+	<section>
+          <div>
+            <strong>Test::HTTP::MockServer</strong>
+          </div>
+          <div>
+            <em>Testing things that don't want to be tested</em>
+          </div>
+          <hr>
+          <div>
+            Daniel Ruoso &lt;druoso@bloomberg.net&gt;
+          </div>
+        </section>
+	<section>
+          <h3>The Problem</h3>
+          <ul>
+            <li>Your code uses a library that makes HTTP calls</li>
+            <li>But no way to inject a test HTTP client</li>
+          </ul>
+        </section>
+        <section>
+          <section>
+            <h3>Example</h3>
+            <ul>
+              <li>You're trying to test code that calls the GitHub API</li>
+              <li>But the author didn't give you many configuration options</li>
+            </ul>
+          </section>
+          <section>
+            <h3>Can we inject it?</h3>
+            <p>The author only allows overriding the url, not the UA</p>
+          </section>
+          <section>
+            <h3>Can we monkey-patch it?</h3>
+            <p>Ugh, yes.</p>
+            <p>But, how much of it?</p>
+            <p>What if it changes?</p>
+          </section>
+          <section>
+            <h3>Fake GitHub?</h3>
+            <p>Yeah, but that's a lot of work</p>
+          </section>
+          <section>
+            <h3>Ok, so what then?</h3>
+            <p>Create a server that knows how to mock in the context
+            of this test specifically</p>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h3>Initialization</h3>
+            <div><pre><code class="perl">use MyAutomation;
+use Test::HTTP::MockServer;
+use MyAutomation;
+my $server = Test::HTTP::MockServer->new();
+my $url    = $server->url_base();
+my $autom  = MyAutomation(
+  githuburl => $url,
+  org       => "myorg",
+  workspace => "t/data/scratch/",
+);
+</code></pre></div>
+          </section>
+          <section>
+            <h3>Mock for this specific test</h3>
+            <div><pre><code class="perl">use Test::HTTP::MockServer::REST;
+my $rest = Test::HTTP::MockServer::REST->new(
+  listrepos => qr/repos$/,
+)
+my $requestprocessor = $rest->wrap_hash(
+  listrepos => sub {
+    return [ { name => "foo",
+               clone_url => "t/data/template/foo.git" },
+             { name => "bar",
+               clone_url => "t/data/template/bar.git" } ]
+  }
+);
+</code></pre></div>
+          </section>
+          <section>
+            <h3>Test against the MockServer</h3>
+            <div><pre><code class="perl">$server->start_mock_server($requestprocessor);
+
+my $rc = $autom->clone_all_repos();
+ok($rc, 'success cloning all repos');
+ok(-d "t/data/scratch/foo/.git", "cloned myorg/foo");
+ok(-d "t/data/scratch/bar/.git", "cloned myorg/bar");
+
+$server->stop_mock_server($requestprocessor);
+</code></pre></div>
+          </section>
+          <section>
+            <h3>Mock for the next test</h3>
+            <div><pre><code class="perl">use Test::HTTP::MockServer::REST;
+my $rest = Test::HTTP::MockServer::REST->new(
+  issues => qr/issues$/,
+)
+my $requestprocessor = $rest->wrap_hash(
+  issues => sub {
+    return [ { number => 1,
+               title => "my pr" } ]
+  }
+);
+</code></pre></div>
+          </section>
+          <section>
+            <h3>Test against the MockServer</h3>
+            <div><pre><code class="perl">$server->start_mock_server($requestprocessor);
+
+my @pulls = $autom->list_pull_requests();
+is(scalar @pulls, 1, "found the one pull request");
+is($pulls[0]{title}, "my pr", "got the right data");
+
+$server->stop_mock_server($requestprocessor);
+</code></pre></div>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h3>How does it work?</h3>
+            <p>Binds to a random TCP port</p>
+            <p>Try again if it's already in use</p>
+          </section>
+          <section>
+            <h3>How does it work?</h3>
+            <p>Fork after the bind on start_mock_server</p>
+            <p>Kill the server on stop_mock_server</p>
+          </section>
+          <section>
+            <h3>How does it work?</h3>
+            <p>Process one request at a time</p>
+            <p>Single-thread, single-process</p>
+            <p>Easy to make things in sequence</p>
+          </section>
+          <section>
+            <h3>How does it work?</h3>
+            <p>Call the mock server yourself in more complex scenarios</p>
+            <p>Copy-on-write, so no state flows back</p>
+          </section>
+        </section>
+        <section>
+          <h3>TODO</h3>
+          <p>Support keep-alive</p>
+        </section>
+        <section>
+          <h3>Fork me in GitHub</h3>
+          <p><a href="https://github.com/bloomberg/Test-HTTP-MockServer">github.com/bloomberg/Test-HTTP-MockServer</a></p>
+        </section>
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+      dependencies: [
+      { src: 'plugin/markdown/marked.js' },
+      { src: 'plugin/markdown/markdown.js' },
+      { src: 'plugin/notes/notes.js', async: true },
+      { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+      ]
+      });
+    </script>
+  </body>
+</html>
